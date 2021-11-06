@@ -327,21 +327,40 @@
       }
     }
 
-    function AddRecord($record, $autosave = false){
+    function AddRecord($recordNew, $autosave = false){
       // validate each field (different for different record types)
       // check whether same record already exists (same domain and value)
-      array_push($this->records, $record);
-      if($autosave) $this->Save();
+
+      // existence check
+      $numId = null;
+      foreach($this->records as $id => $record){
+        if($record['id'] == $recordNew['id']){
+          $numId = $id;
+          break;
+        }
+      }
+
+      if($numId == null and $numId !== 0){
+        array_push($this->records, $recordNew);
+        if($autosave) $this->Save();
+        return true;
+      }else{
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Unable to add record. Record with id ".$recordNew['id']." already exists.";
+        return false;
+      }
+
     }
     function RemoveRecordById($textId){
       $numId = null;
       foreach($this->records as $id => $record){
+        // print_r($record);
         if($record['id'] == $textId){
           $numId = $id;
           break;
         }
       }
-      if(!empty($numId)){
+      if(!empty($numId) or $numId == 0){
         unset($this->records[$numId]);
         return true;
       }else{
@@ -356,9 +375,72 @@
           break;
         }
       }
-      if(!empty($numId)){
+      if(!empty($numId) or $numId == 0){
         unset($this->records[$numId]);
         return true;
+      }else{
+        return false; // no record with such id
+      }
+    }
+    function UpdateRecordById($textId, $recordNew){
+      $numId = null;
+      foreach($this->records as $id => $record){
+        // print_r($record);
+        if($record['id'] == $textId){
+          $numId = $id;
+          break;
+        }
+      }
+      if(!empty($numId) or $numId == 0){
+        if(isset($recordNew['domain'])){
+          $this->records[$numId]['domain'] = $recordNew['domain'];
+        }
+        if(isset($recordNew['ttl'])){
+          $this->records[$numId]['ttl'] = $recordNew['ttl'];
+        }
+        if(isset($recordNew['type'])){
+          $this->records[$numId]['type'] = $recordNew['type'];
+        }
+        if(isset($recordNew['priority'])){
+          $this->records[$numId]['priority'] = $recordNew['priority'];
+        }
+        if(isset($recordNew['address'])){
+          $this->records[$numId]['address'] = $recordNew['address'];
+        }
+        if(isset($recordNew['id'])){
+          $this->records[$numId]['id'] = $recordNew['id'];
+        }
+      }else{
+        return false; // no record with such id
+      }
+    }
+    function UpdateRecord($recordOld, $recordNew){
+      $numId = null;
+      foreach($this->records as $id => $record){
+        if($record['domain'] == $recordOld['domain'] and $record['address'] == $recordOld['address'] and $record['type'] == $recordOld['type']){
+          $numId = $id;
+          break;
+        }
+      }
+      if(!empty($numId) or $numId == 0){
+        if(isset($recordNew['domain'])){
+          $this->records[$numId]['domain'] = $recordNew['domain'];
+        }
+        if(isset($recordNew['ttl'])){
+          $this->records[$numId]['ttl'] = $recordNew['ttl'];
+        }
+        if(isset($recordNew['type'])){
+          $this->records[$numId]['type'] = $recordNew['type'];
+        }
+        if(isset($recordNew['priority'])){
+          $this->records[$numId]['priority'] = $recordNew['priority'];
+        }
+        if(isset($recordNew['address'])){
+          $this->records[$numId]['address'] = $recordNew['address'];
+        }
+        if(isset($recordNew['id'])){
+          $this->records[$numId]['id'] = $recordNew['id'];
+        }
       }else{
         return false; // no record with such id
       }
