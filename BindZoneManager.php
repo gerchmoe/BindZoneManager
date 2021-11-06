@@ -297,13 +297,6 @@
       return $updatedFull;
     }
 
-    function AddRecord($record, $autosave = false){
-      // validate each field (different for different record types)
-      // check whether same record already exists (same domain and value)
-      array_push($this->records, $record);
-      if($autosave) $this->Save();
-    }
-
     function UpdateSOA(array $newParams){
       if(isset($newParams['domain'])){
         $this->soa['domain'] = $newParams['domain'];
@@ -333,10 +326,32 @@
         $this->soa['minimum'] = $newParams['minimum'];
       }
     }
+
+    function AddRecord($record, $autosave = false){
+      // validate each field (different for different record types)
+      // check whether same record already exists (same domain and value)
+      array_push($this->records, $record);
+      if($autosave) $this->Save();
+    }
     function RemoveRecordById($textId){
       $numId = null;
       foreach($this->records as $id => $record){
         if($record['id'] == $textId){
+          $numId = $id;
+          break;
+        }
+      }
+      if(!empty($numId)){
+        unset($this->records[$numId]);
+        return true;
+      }else{
+        return false; // no record with such id
+      }
+    }
+    function RemoveRecord($recordToRemove){
+      $numId = null;
+      foreach($this->records as $id => $record){
+        if($record['domain'] == $recordToRemove['domain'] and $record['address'] == $recordToRemove['address'] and $record['type'] == $recordToRemove['type']){
           $numId = $id;
           break;
         }
