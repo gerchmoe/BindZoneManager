@@ -264,8 +264,6 @@
         "/($this->markerRecordsStart)(.|\n|\r\n)+($this->markerRecordsEnd)/",
         "$this->markerRecordsStart\n$updated\n$this->markerRecordsEnd", $file);
 
-      file_put_contents($this->domainFile.'.saved', $updatedFull);
-
       return $updatedFull;
     }
 
