@@ -149,19 +149,41 @@
               $records[$i]['enabled'] = true;
             }
 
-            // echo $line.PHP_EOL;
 
             $lineArray = explode(' ', $line);
 
-            $records[$i]['domain'] = $lineArray[0];
-            $records[$i]['ttl'] = $lineArray[1];
-            $records[$i]['type'] = $lineArray[3];
-            $records[$i]['address'] = $lineArray[4];
+            $type = $lineArray[3];
 
-            if(preg_match("/(;RID_)[0-9a-zA-Z-_.]+$/", $line)){
-              $records[$i]['id'] = explode(';RID_', $line)[1];
-            }else{
-              $records[$i]['id'] = null;
+            switch($type){
+              case 'A':
+              case 'NS':
+              case 'CNAME':
+              case 'TXT':
+                $records[$i]['domain'] = $lineArray[0];
+                $records[$i]['ttl'] = $lineArray[1];
+                $records[$i]['type'] = $lineArray[3];
+                $records[$i]['address'] = $lineArray[4];
+
+                if(preg_match("/(;RID_)[0-9a-zA-Z-_.]+$/", $line)){
+                  $records[$i]['id'] = explode(';RID_', $line)[1];
+                }else{
+                  $records[$i]['id'] = null;
+                }
+              break;
+
+              case 'MX':
+                $records[$i]['domain'] = $lineArray[0];
+                $records[$i]['ttl'] = $lineArray[1];
+                $records[$i]['type'] = $lineArray[3];
+                $records[$i]['priority'] = $lineArray[4];
+                $records[$i]['address'] = $lineArray[5];
+
+                if(preg_match("/(;RID_)[0-9a-zA-Z-_.]+$/", $line)){
+                  $records[$i]['id'] = explode(';RID_', $line)[1];
+                }else{
+                  $records[$i]['id'] = null;
+                }
+              break;
             }
 
           }
@@ -244,13 +266,21 @@
       foreach($this->records as $record){
         if(!$record['enabled']) $updated .= '; ';
 
+
+
         $domain = $record['domain'];
         $ttl = $record['ttl'];
         $type = $record['type'];
         $address = $record['address'];
         $id = $record['id'];
 
-        $updated .= "$domain $ttl IN $type $address";
+        if($type == 'MX'){
+          $priority = $record['priority'];
+          $updated .= "$domain $ttl IN $type $priority $address";
+        }else{
+          $updated .= "$domain $ttl IN $type $address";
+        }
+
         if(!empty($id)){
           $updated .= " ;RID_$id\n";
         }else{
@@ -267,12 +297,11 @@
       return $updatedFull;
     }
 
-    function Add($record, $autosave = false){
-
+    function AddRecord($record, $autosave = false){
+      // validate each field (different for different record types)
+      // check whether same record already exists (same domain and value)
       array_push($this->records, $record);
-
       if($autosave) $this->Save();
-
     }
 
     function UpdateSOA(array $newParams){
@@ -302,6 +331,21 @@
       }
       if(isset($newParams['minimum'])){
         $this->soa['minimum'] = $newParams['minimum'];
+      }
+    }
+    function RemoveRecordById($textId){
+      $numId = null;
+      foreach($this->records as $id => $record){
+        if($record['id'] == $textId){
+          $numId = $id;
+          break;
+        }
+      }
+      if(!empty($numId)){
+        unset($this->records[$numId]);
+        return true;
+      }else{
+        return false; // no record with such id
       }
     }
 
