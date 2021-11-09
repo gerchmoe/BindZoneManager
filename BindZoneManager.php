@@ -20,16 +20,25 @@
 
     var $fileContents; // Will contain raw file contents
 
-    function __construct(){
-      $this->domainFile = 'aurora-pay.space.db';
+    function __construct($file = ''){
 
-      $this->markerRecordsStart = '; ----- BindPHP Records Start -----';
-      $this->markerRecordsEnd = '; ----- BindPHP Records End -----';
+      if(!empty($file)){
 
-      $this->markerNSStart = '; ----- BindPHP Nameservers Start -----';
-      $this->markerNSEnd = '; ----- BindPHP Nameservers End -----';
+        $this->domainFile = $file;
 
-      $this->Read();
+        $this->markerRecordsStart = '; ----- BindPHP Records Start -----';
+        $this->markerRecordsEnd = '; ----- BindPHP Records End -----';
+
+        $this->markerNSStart = '; ----- BindPHP Nameservers Start -----';
+        $this->markerNSEnd = '; ----- BindPHP Nameservers End -----';
+
+        $this->Read();
+
+      }else{
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Filename argument is required for class initialization. Use: new BindZoneManager('example.com.db')";
+      }
+
     }
 
     function Read(){
@@ -38,10 +47,17 @@
         $file = file_get_contents($this->domainFile);
         $this->fileContents = $file;
 
-        $this->soa = $this->ReadSOA();
-        $this->nameservers = $this->ReadNS();
-        $this->records = $this->ReadRecords();
+        $success = true;
+        $this->soa = $this->ReadSOA() or $success = false;
+        $this->nameservers = $this->ReadNS() or $success = false;
+        $this->records = $this->ReadRecords() or $success = false;
 
+        return $success;
+
+      }else{
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Unable to read file $this->domainFile because it does not exist.".$this->error;
+        return false;
       }
     }
     function ReadSOA(){
@@ -49,36 +65,39 @@
 
       preg_match("/[\n](.*)( SOA )(.|\n)+[)]/", $file, $matches);
 
-      $soaRaw = $matches[0];
-      $soaRaw = preg_replace("/^[\n]+/", '', $soaRaw); // Remove phantom line at the beginning
-      $soaRaw = preg_replace("/(;)(.*)[\n]/", '', $soaRaw); // Remove comments for the values in brackets
-      $soaRaw = preg_replace("/( )+/", ' ', $soaRaw); // Strip multiple spaces into one
-      $soaRaw = preg_replace("/[\n]+/", '', $soaRaw); // Remove all newlines for easier processing
-      $soaRaw = preg_replace("/( )(\)|\()/", '', $soaRaw); // Remove brackets to make explode easier
+      if(!empty($matches) and !empty($matches[0])){
 
-      // echo $soaRaw;
+        $soaRaw = $matches[0];
+        $soaRaw = preg_replace("/^[\n]+/", '', $soaRaw); // Remove phantom line at the beginning
+        $soaRaw = preg_replace("/(;)(.*)[\n]/", '', $soaRaw); // Remove comments for the values in brackets
+        $soaRaw = preg_replace("/( )+/", ' ', $soaRaw); // Strip multiple spaces into one
+        $soaRaw = preg_replace("/[\n]+/", '', $soaRaw); // Remove all newlines for easier processing
+        $soaRaw = preg_replace("/( )(\)|\()/", '', $soaRaw); // Remove brackets to make explode easier
 
-      $values = explode(' ', $soaRaw);
 
-      // print_r($values);
+        $values = explode(' ', $soaRaw);
 
-      // variables to retrieve from file
+        // variables to retrieve from file
 
-      $soa = [];
+        $soa = [];
+        $soa['domain'] = $values[0];
+        $soa['ttl'] = $values[1];
+        $soa['primaryNS'] = $values[4];
+        $soa['mail'] = $values[5];
+        $soa['serial'] = $values[6];
+        $soa['refresh'] = $values[7];
+        $soa['retry'] = $values[8];
+        $soa['expire'] = $values[9];
+        $soa['minimum'] = $values[10];
 
-      $soa['domain'] = $values[0];
-      $soa['ttl'] = $values[1];
-      $soa['primaryNS'] = $values[4];
-      $soa['mail'] = $values[5];
-      $soa['serial'] = $values[6];
-      $soa['refresh'] = $values[7];
-      $soa['retry'] = $values[8];
-      $soa['expire'] = $values[9];
-      $soa['minimum'] = $values[10];
+        return $soa;
 
-      // print_r($soa);
+      }else{
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Unable to identify SOA record.".$this->error;
+        return false;
+      }
 
-      return $soa;
 
     }
     function ReadNS(){
@@ -117,6 +136,10 @@
 
         return $nameservers;
 
+      }else{
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Unable to read nameservers due to lack of NS zone markers.".$this->error;
+        return false;
       }
     }
     function ReadRecords(){
@@ -148,7 +171,6 @@
             }else{
               $records[$i]['enabled'] = true;
             }
-
 
             $lineArray = explode(' ', $line);
 
@@ -192,10 +214,11 @@
           $records = [];
         }
 
-
         return $records;
 
       }else{
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Unable to read regular records due to lack of zone markers.".$this->error;
         return false;
       }
     }
@@ -204,11 +227,13 @@
 
       $file = $this->fileContents;
 
-      $updated = $this->RenderSOA($file);
-      $updated = $this->RenderNS($updated);
-      $updated = $this->RenderRecords($updated);
+      $success = true;
 
-      return $updated;
+      $updated = $this->RenderSOA($file) or $success = false;
+      $updated = $this->RenderNS($updated) or $success = false;
+      $updated = $this->RenderRecords($updated) or $success = false;
+
+      return $success ? $updated : false;
 
     }
     function RenderSOA($file){
@@ -325,6 +350,11 @@
       if(isset($newParams['minimum'])){
         $this->soa['minimum'] = $newParams['minimum'];
       }
+      $success = true;
+      foreach($newParams as $param => $value) {
+        if($this->soa[$param] !== $value) $success = false;
+      }
+      return $success;
     }
 
     function AddRecord($recordNew, $autosave = false){
@@ -346,7 +376,7 @@
         return true;
       }else{
         $this->e = true;
-        $this->error = __FUNCTION__."(): Unable to add record. Record with id ".$recordNew['id']." already exists.";
+        $this->error = __FUNCTION__."(): Unable to add record. Record with id ".$recordNew['id']." already exists.".$this->error;
         return false;
       }
 
