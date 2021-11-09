@@ -450,7 +450,10 @@
         unset($this->records[$numId]);
         return true;
       }else{
-        return false; // no record with such id
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Record with id $textId does not exist, therefore cannot be removed.".$this->error;
+        error_log($this->error);
+        return false;
       }
     }
     function RemoveRecord($recordToRemove){
