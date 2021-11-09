@@ -386,28 +386,55 @@
       }
     }
 
-    function AddRecord($recordNew, $autosave = false){
+    function AddRecord($recordNew){
       // validate each field (different for different record types)
       // check whether same record already exists (same domain and value)
 
-      // existence check
-      $numId = null;
-      foreach($this->records as $id => $record){
-        if($record['id'] == $recordNew['id']){
-          $numId = $id;
-          break;
-        }
+      $valid = true;
+
+      // validation
+      if(empty($recordNew['domain'])) $valid = false;
+      if(!(!empty($recordNew['ttl']) and preg_match("/[0-9]+/", $recordNew['ttl']))) $valid = false;
+      if(empty($recordNew['type']) or !preg_match("/^(A|NS|CNAME|TXT|MX)$/", $recordNew['type'])) $valid = false;
+      if(!empty($recordNew['priority']) and !preg_match("/[0-9]+/", $recordNew['priority'])) $valid = false;
+      if(empty($recordNew['address'])) $valid = false;
+
+      if(empty($recordNew['priority']) and $recordNew['type'] == 'MX'){
+        $recordNew['priority'] = 0;
+        $this->warning = __FUNCTION__."(): Warning: Priority of MX record was not passed, so it was set to default value (0).";
+        error_log($this->warning);
       }
 
-      if($numId == null and $numId !== 0){
-        array_push($this->records, $recordNew);
-        if($autosave) $this->Save();
-        return true;
+      if($valid){
+
+        // existence check
+        $numId = null;
+        foreach($this->records as $id => $record){
+          if($record['id'] == $recordNew['id']){
+            $numId = $id;
+            break;
+          }elseif($record['domain'] == $recordNew['domain'] and $record['type'] == $recordNew['type']){
+            $numId = $id;
+            break;
+          }
+        }
+
+        if($numId == null and $numId !== 0){
+          array_push($this->records, $recordNew);
+          return true;
+        }else{
+          $this->e = true;
+          $this->error = __FUNCTION__."(): Unable to add record '".$recordNew['id']."'. Either record with this domain or id ".$recordNew['id']." already exists.".$this->error;
+          return false;
+        }
+
       }else{
         $this->e = true;
-        $this->error = __FUNCTION__."(): Unable to add record. Record with id ".$recordNew['id']." already exists.".$this->error;
+        $this->error = __FUNCTION__."(): Passed record array is not valid.";
+        error_log($this->error);
         return false;
       }
+
 
     }
     function RemoveRecordById($textId){
