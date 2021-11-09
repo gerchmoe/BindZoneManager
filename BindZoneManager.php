@@ -272,9 +272,6 @@
       $oldRawSOA = $matches[0];
       $oldRawSOA = preg_replace("/^[\n]+/", '', $oldRawSOA); // Remove phantom line at the beginning
 
-      // select soa section
-      // replace old vars to new ones - yikes.
-
       $domain = $this->soa['domain'];
       $ttl = $this->soa['ttl'];
       $primaryNS = $this->soa['primaryNS'];
@@ -294,17 +291,14 @@
 
     }
     function RenderNS($file){
-
       $updated = "";
 
       foreach($this->nameservers as $ns){
-
         $domain = $ns['domain'];
         $ttl = $ns['ttl'];
         $address = $ns['address'];
 
         $updated .= "$domain $ttl IN NS $address\n";
-
       }
 
       $updatedFile = preg_replace(
@@ -350,38 +344,46 @@
     }
 
     function UpdateSOA(array $newParams){
+      $newSoa = [];
       if(isset($newParams['domain'])){
-        $this->soa['domain'] = $newParams['domain'];
+        $newSoa['domain'] = $newParams['domain'];
       }
       if(isset($newParams['ttl']) and preg_match("/^[0-9]+$/", $newParams['ttl'])){
-        $this->soa['ttl'] = $newParams['ttl'];
+        $newSoa['ttl'] = $newParams['ttl'];
       }
       if(isset($newParams['primaryNS'])){
-        $this->soa['primaryNS'] = $newParams['primaryNS'];
+        $newSoa['primaryNS'] = $newParams['primaryNS'];
       }
       if(isset($newParams['mail'])){
-        $this->soa['mail'] = $newParams['mail'];
+        $newSoa['mail'] = $newParams['mail'];
       }
       if(isset($newParams['serial']) and preg_match("/^[0-9]+$/", $newParams['serial'])){
-        $this->soa['serial'] = $newParams['serial'];
+        $newSoa['serial'] = $newParams['serial'];
       }
-      if(isset($newParams['refresh'])){
-        $this->soa['refresh'] = $newParams['refresh'];
+      if(isset($newParams['refresh']) and preg_match("/^[0-9]+$/", $newParams['refresh'])){
+        $newSoa['refresh'] = $newParams['refresh'];
       }
-      if(isset($newParams['retry'])){
-        $this->soa['retry'] = $newParams['retry'];
+      if(isset($newParams['retry']) and preg_match("/^[0-9]+$/", $newParams['retry'])){
+        $newSoa['retry'] = $newParams['retry'];
       }
-      if(isset($newParams['expire'])){
-        $this->soa['expire'] = $newParams['expire'];
+      if(isset($newParams['expire']) and preg_match("/^[0-9]+$/", $newParams['expire'])){
+        $newSoa['expire'] = $newParams['expire'];
       }
-      if(isset($newParams['minimum'])){
-        $this->soa['minimum'] = $newParams['minimum'];
+      if(isset($newParams['minimum']) and preg_match("/^[0-9]+$/", $newParams['minimum'])){
+        $newSoa['minimum'] = $newParams['minimum'];
       }
-      $success = true;
-      foreach($newParams as $param => $value) {
-        if($this->soa[$param] !== $value) $success = false;
+      if($newSoa == $newParams){
+        foreach ($newSoa as $param => $value) {
+          $this->soa[$param] = $newSoa[$param];
+        }
+        return true;
+      }else{
+        $this->e = true;
+        $error_message = __FUNCTION__."(): Fatal error: Invalid params were passed.\n".$this->error;
+        $this->error = $error_message;
+        error_log($error_message);
+        return false;
       }
-      return $success;
     }
 
     function AddRecord($recordNew, $autosave = false){
