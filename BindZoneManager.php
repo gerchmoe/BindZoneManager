@@ -5,6 +5,7 @@
 
     var $e = false;
     var $error;
+    var $warning;
 
     var $domainFile; // Path to the bind zone file
 
@@ -48,11 +49,21 @@
         $this->fileContents = $file;
 
         $success = true;
-        $this->soa = $this->ReadSOA() or $success = false;
-        $this->nameservers = $this->ReadNS() or $success = false;
-        $this->records = $this->ReadRecords() or $success = false;
+        $newSoa = $this->ReadSOA() or $success = false;
+        $newNameservers = $this->ReadNS() or $success = false;
+        $newRecords = $this->ReadRecords() or $success = false;
 
-        return $success;
+        if($success){
+          $this->soa = $newSoa;
+          $this->nameservers = $newNameservers;
+          $this->records = $newRecords;
+        }else{
+          $this->e = true;
+          $error_message = __FUNCTION__."(): Fatal error: Unable to parse some sections. More details:\n".$this->error;
+          $this->error = $error_message;
+          error_log($error_message);
+          return false;
+        }
 
       }else{
         $this->e = true;
@@ -120,21 +131,39 @@
         $nameservers = [];
         foreach($nsLines as $line){
 
-          $items = explode(' ', $line);
+          if(preg_match("/^(.*)( )[0-9]+( IN NS )(.*)$/", $line)){
 
-          $domain = $items[0];
-          $ttl = $items[1];
-          $address = $items[4];
+            $items = explode(' ', $line);
 
-          array_push($nameservers, [
-            'domain' => $domain,
-            'ttl' => $ttl,
-            'address' => $address
-          ]);
+            $domain = $items[0];
+            $ttl = $items[1];
+            $address = $items[4];
 
+            array_push($nameservers, [
+              'domain' => $domain,
+              'ttl' => $ttl,
+              'address' => $address
+            ]);
+
+          }else{
+
+            $error_message = __FUNCTION__."(): Warning: Unable to parse line '$line', therefore it is skipped.";
+            $this->warning = $error_message;
+            error_log($error_message);
+
+          }
         }
 
-        return $nameservers;
+        if(count($nsLines) > 0 and count($nameservers) == 0){
+          $this->e = true;
+          $error_message = __FUNCTION__."(): Fatal error: Unable to parse a single line from NS section.";
+          $this->error = $error_message;
+          error_log($error_message);
+          return false;
+        }else{
+          return $nameservers;
+        }
+
 
       }else{
         $this->e = true;
@@ -290,8 +319,6 @@
 
       foreach($this->records as $record){
         if(!$record['enabled']) $updated .= '; ';
-
-
 
         $domain = $record['domain'];
         $ttl = $record['ttl'];
