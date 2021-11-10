@@ -386,18 +386,50 @@
       }
     }
 
+    function ValidateRecord($record){
+      $valid = true;
+      if(empty($record['domain'])){
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Error: 'domain' element is missing in passed record.\n".$this->error;
+        error_log($this->error);
+        return false;
+        $valid = false;
+      }
+      if(!(!empty($record['ttl']) and preg_match("/[0-9]+/", $record['ttl']))){
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Error: 'ttl' element is missing or invalid (should be a number).\n".$this->error;
+        error_log($this->error);
+        return false;
+        $valid = false;
+      }
+      if(empty($record['type']) or !preg_match("/^(A|NS|CNAME|TXT|MX)$/", $record['type'])){
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Error: 'type' element is missing or not supported (Supported: A, NS, CNAME, TXT, MX).\n".$this->error;
+        error_log($this->error);
+        return false;
+        $valid = false;
+      }
+      if(!empty($record['priority']) and !preg_match("/[0-9]+/", $record['priority'])){
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Error: 'priority' element is not valid (should be a number).\n".$this->error;
+        error_log($this->error);
+        return false;
+        $valid = false;
+      }
+      if(empty($record['address'])){
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Error: 'address' element is missing.\n".$this->error;
+        error_log($this->error);
+        return false;
+        $valid = false;
+      }
+      return $valid;
+    }
     function AddRecord($recordNew){
       // validate each field (different for different record types)
       // check whether same record already exists (same domain and value)
 
-      $valid = true;
-
-      // validation
-      if(empty($recordNew['domain'])) $valid = false;
-      if(!(!empty($recordNew['ttl']) and preg_match("/[0-9]+/", $recordNew['ttl']))) $valid = false;
-      if(empty($recordNew['type']) or !preg_match("/^(A|NS|CNAME|TXT|MX)$/", $recordNew['type'])) $valid = false;
-      if(!empty($recordNew['priority']) and !preg_match("/[0-9]+/", $recordNew['priority'])) $valid = false;
-      if(empty($recordNew['address'])) $valid = false;
+      $valid = $this->ValidateRecord($recordNew);
 
       if(empty($recordNew['priority']) and $recordNew['type'] == 'MX'){
         $recordNew['priority'] = 0;
@@ -451,7 +483,7 @@
         return true;
       }else{
         $this->e = true;
-        $this->error = __FUNCTION__."(): Record with id $textId does not exist, therefore cannot be removed.".$this->error;
+        $this->error = __FUNCTION__."(): Record with id $textId does not exist, therefore cannot be removed. \n".$this->error;
         error_log($this->error);
         return false;
       }
@@ -469,13 +501,13 @@
         return true;
       }else{
         $this->e = true;
-        $this->error = __FUNCTION__."(): Record with selected parameters does not exist, therefore cannot be removed.".$this->error;
+        $this->error = __FUNCTION__."(): Record with selected parameters does not exist, therefore cannot be removed. \n".$this->error;
         error_log($this->error);
         return false;
       }
     }
     function UpdateRecordById($textId, $recordNew){
-      $numId = null;
+      $numId = -1;
       foreach($this->records as $id => $record){
         // print_r($record);
         if($record['id'] == $textId){
@@ -483,85 +515,143 @@
           break;
         }
       }
-      if(!empty($numId) or $numId == 0){
-        if(isset($recordNew['domain'])){
-          $this->records[$numId]['domain'] = $recordNew['domain'];
+      if($numId !== -1){
+        $recordNewFull = $this->records[$numId];
+        foreach($recordNew as $param => $value){
+          $recordNewFull[$param] = $value;
         }
-        if(isset($recordNew['ttl'])){
-          $this->records[$numId]['ttl'] = $recordNew['ttl'];
-        }
-        if(isset($recordNew['type'])){
-          $this->records[$numId]['type'] = $recordNew['type'];
-        }
-        if(isset($recordNew['priority'])){
-          $this->records[$numId]['priority'] = $recordNew['priority'];
-        }
-        if(isset($recordNew['address'])){
-          $this->records[$numId]['address'] = $recordNew['address'];
-        }
-        if(isset($recordNew['id'])){
-          $this->records[$numId]['id'] = $recordNew['id'];
+        if($this->ValidateRecord($recordNewFull)){
+          $this->records[$numId] = $recordNewFull;
+          return true;
+        }else{
+          $this->e = true;
+          $this->error = __FUNCTION__."(): Record update error: Record with given parameters is not valid. \n".$this->error;
+          error_log($this->error);
+          return false;
         }
       }else{
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Record update error: Record with id '$textId' was not found. \n".$this->error;
+        error_log($this->error);
         return false; // no record with such id
       }
     }
     function UpdateRecord($recordOld, $recordNew){
-      $numId = null;
+      $numId = -1;
       foreach($this->records as $id => $record){
         if($record['domain'] == $recordOld['domain'] and $record['address'] == $recordOld['address'] and $record['type'] == $recordOld['type']){
           $numId = $id;
           break;
         }
       }
-      if(!empty($numId) or $numId == 0){
-        if(isset($recordNew['domain'])){
-          $this->records[$numId]['domain'] = $recordNew['domain'];
+      if($numId !== -1){
+        $recordNewFull = $this->records[$numId];
+        foreach($recordNew as $param => $value){
+          $recordNewFull[$param] = $value;
         }
-        if(isset($recordNew['ttl'])){
-          $this->records[$numId]['ttl'] = $recordNew['ttl'];
-        }
-        if(isset($recordNew['type'])){
-          $this->records[$numId]['type'] = $recordNew['type'];
-        }
-        if(isset($recordNew['priority'])){
-          $this->records[$numId]['priority'] = $recordNew['priority'];
-        }
-        if(isset($recordNew['address'])){
-          $this->records[$numId]['address'] = $recordNew['address'];
-        }
-        if(isset($recordNew['id'])){
-          $this->records[$numId]['id'] = $recordNew['id'];
+        if($this->ValidateRecord($recordNewFull)){
+          $this->records[$numId] = $recordNewFull;
+          return true;
+        }else{
+          $this->e = true;
+          $this->error = __FUNCTION__."(): Record update error: Record with given parameters is not valid. \n".$this->error;
+          error_log($this->error);
+          return false;
         }
       }else{
-        return false; // no record with such id
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Record update error: Record with given data was not found. \n".$this->error;
+        error_log($this->error);
+        return false; // no record with such data
       }
     }
 
-    // function ValidateNameserver(){}
+    function ValidateNameserver($newNS){
+      $valid = true;
+      if(!isset($newNS['domain'])){
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Error: 'domain' element is missing in passed record.\n".$this->error;
+        error_log($this->error);
+        return false;
+        $valid = false;
+      }
+      if(!isset($newNS['ttl'])){
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Error: 'ttl' element is missing in passed record.\n".$this->error;
+        error_log($this->error);
+        return false;
+        $valid = false;
+      }elseif(!preg_match("/^[0-9]+$/", $newNS['ttl'])){
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Error: 'ttl' element is not valid (should be a number).\n".$this->error;
+        error_log($this->error);
+        return false;
+        $valid = false;
+      }
+      if(!isset($newNS['address'])){
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Error: 'address' element is missing in passed record.\n".$this->error;
+        error_log($this->error);
+        return false;
+        $valid = false;
+      }
+      return $valid;
+    }
     function UpdateNameserver(int $i, array $newParams){
-      if(isset($newParams['domain'])){
-        $this->nameservers[$i]['domain'] = $newParams['domain'];
+      $newFullNS = $this->nameservers[$i];
+      foreach($newParams as $param => $value){
+        $newFullNS[$param] = $value;
       }
-      if(isset($newParams['ttl']) and preg_match("/^[0-9]+$/", $newParams['ttl'])){
-        $this->nameservers[$i]['ttl'] = $newParams['ttl'];
-      }
-      if(isset($newParams['address'])){
-        $this->nameservers[$i]['address'] = $newParams['address'];
+      if($this->ValidateNameserver($newFullNS)){
+        $this->nameservers[$i] = $newFullNS;
+        return true;
+      }else{
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Nameserver update error: NS with given parameters is not valid. \n".$this->error;
+        error_log($this->error);
+        return false;
       }
     }
     function UpdateNameservers(array $newNameservers){
+      $newNS = [];
       foreach($newNameservers as $i => $newParams){
-        if(isset($newParams['domain'])){
-          $this->nameservers[$i]['domain'] = $newParams['domain'];
+
+        $newFullNS = $this->nameservers[$i];
+        foreach($newParams as $param => $value){
+          $newFullNS[$param] = $value;
         }
-        if(isset($newParams['ttl']) and preg_match("/^[0-9]+$/", $newParams['ttl'])){
-          $this->nameservers[$i]['ttl'] = $newParams['ttl'];
+        if($this->ValidateNameserver($newFullNS)){
+          $newNS[$i] = $newFullNS;
+        }else{
+          $this->e = true;
+          $this->error = __FUNCTION__."(): Nameserver validation error: NS with given parameters is not valid. \n".$this->error;
+          error_log($this->error);
+          return false;
         }
-        if(isset($newParams['address'])){
-          $this->nameservers[$i]['address'] = $newParams['address'];
-        }
+        // if(isset($newParams['domain'])){
+        //   $this->nameservers[$i]['domain'] = $newParams['domain'];
+        // }
+        // if(isset($newParams['ttl']) and preg_match("/^[0-9]+$/", $newParams['ttl'])){
+        //   $this->nameservers[$i]['ttl'] = $newParams['ttl'];
+        // }
+        // if(isset($newParams['address'])){
+        //   $this->nameservers[$i]['address'] = $newParams['address'];
+        // }
       }
+
+      if(count($newNS) == count($newNameservers)){
+        // $this->nameservers = $newNS;
+        foreach($newNS as $id => $nameserver){
+          $this->nameservers[$id] = $nameserver;
+        }
+        return true;
+      }else{
+        $this->e = true;
+        $this->error = __FUNCTION__."(): Nameserver update error: Some of given NS's are not valid. \n".$this->error;
+        error_log($this->error);
+        return false;
+      }
+
     }
 
     function Save($forceUpdateSerial = false){
