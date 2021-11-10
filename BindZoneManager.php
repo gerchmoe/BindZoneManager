@@ -498,14 +498,14 @@
       }
     }
     function RemoveRecord($recordToRemove){
-      $numId = null;
+      $numId = -1;
       foreach($this->records as $id => $record){
         if($record['domain'] == $recordToRemove['domain'] and $record['address'] == $recordToRemove['address'] and $record['type'] == $recordToRemove['type']){
           $numId = $id;
           break;
         }
       }
-      if(!empty($numId) or $numId == 0){
+      if($numId !== -1){
         unset($this->records[$numId]);
         return true;
       }else{
