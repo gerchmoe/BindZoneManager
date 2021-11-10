@@ -454,7 +454,7 @@
           if($record['id'] == $recordNew['id']){
             $numId = $id;
             break;
-          }elseif($record['domain'] == $recordNew['domain'] and $record['type'] == $recordNew['type']){
+          }elseif($record['domain'] == $recordNew['domain'] and $record['type'] == $recordNew['type'] and $record['address'] == $recordNew['address']){
             $numId = $id;
             break;
           }
