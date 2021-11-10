@@ -479,7 +479,7 @@
 
     }
     function RemoveRecordById($textId){
-      $numId = null;
+      $numId = -1;
       foreach($this->records as $id => $record){
         // print_r($record);
         if($record['id'] == $textId){
@@ -487,7 +487,7 @@
           break;
         }
       }
-      if(!empty($numId) or $numId == 0){
+      if($numId !== -1){
         unset($this->records[$numId]);
         return true;
       }else{
