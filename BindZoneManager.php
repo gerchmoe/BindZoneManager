@@ -8,6 +8,7 @@
     var $warning;
 
     var $domainFile; // Path to the bind zone file
+    var $saveOrig = true;
 
     var $soa = []; // Will contain all data from SOA record
 
@@ -660,25 +661,54 @@
         $this->soa['serial']++;
       }
 
-      // $this->soa['expire'] = '';
+      // $jsonSaved = $this->SaveToJson();
+      // return $jsonSaved and $fileSaved ? true : false;
+      $saveSuccessful = $this->SaveToFile();
 
-      $jsonSaved = $this->SaveToJson();
-      $fileSaved = $this->SaveToFile();
-
-      return $jsonSaved and $fileSaved ? true : false;
-
+      if($saveSuccessful){
+        return true;
+      }else{
+        $this->e = true;
+        $error_message = __FUNCTION__."(): Zone file saving failed. More Details:\n".$this->error;
+        $this->error = $error_message;
+        error_log($error_message);
+        return false;
+      }
 
     }
     private function SaveToFile(){
 
+      if($this->saveOrig){
+        $origFile = @file_get_contents($this->domainFile);
+        if(!$origFile){
+          $this->e = true;
+          $error_message = __FUNCTION__."(): Attempt to save original file failed. Unable to retrieve zone file.\n".$this->error;
+          $this->error = $error_message;
+          error_log($error_message);
+          return false;
+        }else{
+          $origSaved = @file_put_contents($this->domainFile.'.orig', $origFile);
+          if(!$origSaved){
+            $this->e = true;
+            $error_message = __FUNCTION__."(): Attempt to save original file failed. Unable to save original zone file.\n".$this->error;
+            $this->error = $error_message;
+            error_log($error_message);
+            return false;
+          }
+        }
+      }
+
       $newContent = $this->Render();
-      $save = file_put_contents($this->domainFile, $newContent);
+      $save = @file_put_contents($this->domainFile, $newContent);
 
       if($save){
         return true;
       }else{
+        $this->e = true;
+        $error_message = __FUNCTION__."(): Unable to save updated file.\n".$this->error;
+        $this->error = $error_message;
+        error_log($error_message);
         return false;
-        // throw new Exception("Unable to save updated file!");
       }
 
     }
@@ -698,15 +728,5 @@
     }
 
   }
-
-  // Functions:
-  // - Initialize: Check file, parse it, check json file, compare
-  // - Read: Read the file and parse
-  // - create a file lock to avoid simultaneous editing
-  // - modify records
-  // - detect same records and manage it (there can be default behavior in this case)
-  // - remove records
-  // - update serial number in the SOA record with each zone update
-
 
 ?>
