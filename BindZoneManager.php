@@ -46,7 +46,15 @@
     function Read(){
       // NOTE: We can and should add lock, so file won't be changed from two editors at the same time
       if(file_exists($this->domainFile)){
-        $file = file_get_contents($this->domainFile);
+        $file = @file_get_contents($this->domainFile);
+
+        if(!$file){
+          $this->e = true;
+          $this->error = __FUNCTION__."(): Unable to open file '$this->domainFile'.\n".$this->error;
+          error_log($this->error);
+          return false;
+        }
+
         $this->fileContents = $file;
 
         $success = true;
@@ -721,10 +729,43 @@
       return file_put_contents('data.json', $json);
     }
 
-    function ReloadZones(){
+    function Reload(){
       // NOTE: This function should be executed inside the docker container with the server.
       // Change this function if this class and bind server will be in different environments.
-      shell_exec('rndc reload');
+      // shell_exec('rndc reload');
+      if(function_exists('zone_reload')){
+        if(zone_reload()){ // zone_reload - predefined function outside of this class
+          return true;
+        }else{
+          // reverting changes and reloading again
+          $this->e = true;
+          $this->error = __FUNCTION__."(): Zone reload failed.\n".$this->error;
+          error_log($this->error);
+          $origFile = @file_get_contents($this->domainFile.'.orig');
+          if(!$origFile){
+            $this->error = __FUNCTION__."(): Attempt to revert changes failed due to inability to load .orig file.\n".$this->error;
+            error_log($this->error);
+            return false;
+          }else{
+            $revert = @file_put_contents($this->domainFile, $origFile);
+            if($revert){
+              if(zone_reload()){
+                $this->error = __FUNCTION__."(): Zone file was reverted successfully.\n".$this->error;
+                error_log($this->error);
+                return false;
+              }else{
+                $this->error = __FUNCTION__."(): Zone file was reverted, but it is still invalid. Review required.\n".$this->error;
+                error_log($this->error);
+                return false;
+              }
+            }else{
+              $this->error = __FUNCTION__."(): Attempt to revert changes failed due to inability to save zone file.\n".$this->error;
+              error_log($this->error);
+              return false;
+            }
+          }
+        }
+      }
     }
 
   }
