@@ -61,10 +61,10 @@
         $newSoa = $this->ReadSOA() or $success = false;
 
         $newNameservers = $this->ReadNS();
-        if($newNameservers == false) $success = false;
+        if($newNameservers == false and $newNameservers !== []) $success = false;
 
         $newRecords = $this->ReadRecords();
-        if($newRecords == false) $success = false;
+        if($newRecords == false and $newRecords !== []) $success = false;
 
         if($success){
           $this->soa = $newSoa;
