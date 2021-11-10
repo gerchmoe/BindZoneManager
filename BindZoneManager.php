@@ -408,7 +408,7 @@
         return false;
         $valid = false;
       }
-      if(!(!empty($record['ttl']) and preg_match("/[0-9]+/", $record['ttl']))){
+      if(!(!empty($record['ttl']) and preg_match("/^[0-9]+$/", $record['ttl']))){
         $this->e = true;
         $this->error = __FUNCTION__."(): Error: 'ttl' element is missing or invalid (should be a number).\n".$this->error;
         error_log($this->error);
@@ -422,7 +422,7 @@
         return false;
         $valid = false;
       }
-      if(!empty($record['priority']) and !preg_match("/[0-9]+/", $record['priority'])){
+      if(!empty($record['priority']) and !preg_match("/^[0-9]+$/", $record['priority'])){
         $this->e = true;
         $this->error = __FUNCTION__."(): Error: 'priority' element is not valid (should be a number).\n".$this->error;
         error_log($this->error);
